@@ -1,8 +1,19 @@
-// Data models
+import 'package:hive/hive.dart';
+
+part 'model.g.dart';
+
+@HiveType(typeId: 0)
 class Workout {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String type;
+
+  @HiveField(2)
   final String details;
+
+  @HiveField(3)
   final DateTime date;
 
   Workout({
@@ -11,31 +22,18 @@ class Workout {
     required this.details,
     required this.date,
   });
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'type': type,
-    'details': details,
-    'date': date.toIso8601String(),
-  };
-
-  static Workout fromJson(Map<String, dynamic> json) => Workout(
-    id: json['id'],
-    type: json['type'],
-    details: json['details'],
-    date: DateTime.parse(json['date']),
-  );
 }
 
+@HiveType(typeId: 1)
 class Gym {
+  @HiveField(0)
   final String name;
+
+  @HiveField(1)
   final double lat;
+
+  @HiveField(2)
   final double lng;
 
   Gym({required this.name, required this.lat, required this.lng});
-
-  Map<String, dynamic> toJson() => {'name': name, 'lat': lat, 'lng': lng};
-
-  static Gym fromJson(Map<String, dynamic> json) =>
-      Gym(name: json['name'], lat: json['lat'], lng: json['lng']);
 }

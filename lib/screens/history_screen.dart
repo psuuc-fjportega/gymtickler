@@ -5,12 +5,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final box = Hive.box('workouts');
-    final workouts =
-        box.values
-            .cast<Map>()
-            .map((e) => Workout.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
+    var box = Hive.box<Workout>('workouts');
+    final workouts = box.values.cast<Workout>().toList();
 
     return Scaffold(
       appBar: AppBar(title: Text('Workout History')),
