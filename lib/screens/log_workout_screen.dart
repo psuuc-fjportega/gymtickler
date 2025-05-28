@@ -17,14 +17,17 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   void _saveWorkout() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+
       final workout = Workout(
         id: Uuid().v4(),
         type: _type,
         details: _details,
         date: DateTime.now(),
       );
-      final box = Hive.box('workouts');
-      await box.add(workout.toJson());
+
+      final box = Hive.box<Workout>('workouts');
+      await box.add(workout);
+
       Navigator.pop(context);
     }
   }
@@ -55,7 +58,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 decoration: InputDecoration(
                   labelText: 'Details (e.g., 5km run, Squats 3x10)',
                 ),
-                validator: (value) => value!.isEmpty ? 'Enter details' : null,
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty ? 'Enter details' : null,
                 onSaved: (value) => _details = value!,
               ),
               SizedBox(height: 16),

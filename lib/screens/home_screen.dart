@@ -41,24 +41,25 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
     }
+    if (permission == LocationPermission.deniedForever) {
+      setState(() => _weather = 'Location permissions permanently denied');
+      return;
+    }
 
     _currentPosition = await Geolocator.getCurrentPosition();
     setState(() {});
-    _fetchGyms();
-    _fetchWeather();
+
+    await _fetchGyms();
+    await _fetchWeather();
   }
 
   Future<void> _fetchGyms() async {
     if (_currentPosition == null) return;
 
-    final box = Hive.box('gyms');
+    final box = Hive.box<Gym>('gyms');
     if (box.isNotEmpty) {
       setState(() {
-        _gyms =
-            box.values
-                .cast<Map>()
-                .map((e) => Gym.fromJson(Map<String, dynamic>.from(e)))
-                .toList();
+        _gyms = box.values.cast<Gym>().toList();
       });
       return;
     }
@@ -66,14 +67,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final url =
         'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
         '?location=${_currentPosition!.latitude},${_currentPosition!.longitude}'
-        '&radius=5000&type=gym&key=YOUR_GOOGLE_API_KEY';
+        '&radius=5000&type=establishment&key=AIzaSyAuIZ2Wzf153fefXb81qx5ry-MlT7Lq-mA';
+
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final results = data['results'] as List;
+
         _gyms =
             results
+                .where((place) {
+                  final name = (place['name'] as String).toLowerCase();
+                  return name.contains('gym') || name.contains('fitness');
+                })
                 .map(
                   (place) => Gym(
                     name: place['name'],
@@ -82,8 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 )
                 .toList();
+
         await box.clear();
-        await box.addAll(_gyms.map((g) => g.toJson()));
+        await box.addAll(_gyms);
+
         setState(() {});
       }
     } catch (e) {
@@ -106,7 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final url =
         'https://api.openweathermap.org/data/2.5/weather'
         '?lat=${_currentPosition!.latitude}&lon=${_currentPosition!.longitude}'
-        '&appid=YOUR_OPENWEATHERMAP_API_KEY&units=metric';
+        '&appid=32aa21ce39e4e3be112de0c1d4b4242a&units=metric';
+
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
@@ -134,45 +144,21 @@ class _HomeScreenState extends State<HomeScreen> {
     mapController = controller;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('GymTickler')),
-      body: Column(
-        children: [
-          Container(
-            height: 300,
-            child:
-                _currentPosition == null
-                    ? Center(child: CircularProgressIndicator())
-                    : GoogleMap(
-                      onMapCreated: _onMapCreated,
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(
-                          _currentPosition!.latitude,
-                          _currentPosition!.longitude,
-                        ),
-                        zoom: 12,
-                      ),
-                      markers:
-                          _gyms
-                              .map(
-                                (gym) => Marker(
-                                  markerId: MarkerId(gym.name),
-                                  position: LatLng(gym.lat, gym.lng),
-                                  infoWindow: InfoWindow(title: gym.name),
-                                ),
-                              )
-                              .toSet(),
-                    ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16),
+  void _showInfoModal() {
+    showModalBottomSheet(
+      context: context,
+      builder:
+          (context) => Padding(
+            padding: const EdgeInsets.all(24.0),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Weather: $_weather'),
+                Text('Weather: $_weather', style: TextStyle(fontSize: 18)),
                 SizedBox(height: 8),
-                Text('Suggested Workout: $_workoutSuggestion'),
+                Text(
+                  'Suggested Workout: $_workoutSuggestion',
+                  style: TextStyle(fontSize: 16),
+                ),
                 SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => Navigator.pushNamed(context, '/log'),
@@ -185,20 +171,61 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: Icon(Icons.fitness_center),
+        title: Text("GymTickler"),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(icon: Icon(Icons.info_outline), onPressed: _showInfoModal),
         ],
       ),
+      body:
+          _currentPosition == null
+              ? Center(child: CircularProgressIndicator())
+              : GoogleMap(
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                compassEnabled: true,
+                zoomControlsEnabled: true,
+                mapType: MapType.normal,
+                onTap: (LatLng latLng) {
+                  mapController?.animateCamera(CameraUpdate.newLatLng(latLng));
+                },
+                onMapCreated: _onMapCreated,
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(
+                    _currentPosition!.latitude,
+                    _currentPosition!.longitude,
+                  ),
+                  zoom: 16,
+                ),
+                markers:
+                    _gyms
+                        .map(
+                          (gym) => Marker(
+                            markerId: MarkerId(gym.name),
+                            position: LatLng(gym.lat, gym.lng),
+                            infoWindow: InfoWindow(title: gym.name),
+                          ),
+                        )
+                        .toSet(),
+              ),
     );
   }
 
   Future<void> _loadCachedData() async {
-    final box = Hive.box('gyms');
+    final box = Hive.box<Gym>('gyms');
     if (box.isNotEmpty) {
       setState(() {
-        _gyms =
-            box.values
-                .cast<Map>()
-                .map((e) => Gym.fromJson(Map<String, dynamic>.from(e)))
-                .toList();
+        _gyms = box.values.cast<Gym>().toList();
       });
     }
     final weatherBox = Hive.box('weather');
