@@ -17,6 +17,8 @@ void main() async {
 }
 
 class GymTicklerApp extends StatelessWidget {
+  const GymTicklerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
