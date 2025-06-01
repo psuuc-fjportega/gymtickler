@@ -147,28 +147,162 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showInfoModal() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      backgroundColor: Colors.transparent,
       builder:
-          (context) => Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Weather: $_weather', style: TextStyle(fontSize: 18)),
-                SizedBox(height: 8),
-                Text(
-                  'Suggested Workout: $_workoutSuggestion',
-                  style: TextStyle(fontSize: 16),
+          (context) => SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.2),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: ModalRoute.of(context)!.animation!,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: FadeTransition(
+              opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: ModalRoute.of(context)!.animation!,
+                  curve: Curves.easeIn,
                 ),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => Navigator.pushNamed(context, '/log'),
-                  child: Text('Log Workout'),
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
                 ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pushNamed(context, '/history'),
-                  child: Text('View History'),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFFAB47BC), // Lighter purple
+                      Color(0xFFE1BEE7), // Softer purple
+                      Colors.white,
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
                 ),
-              ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 50,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF6A1B9A),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Workout Info',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF6A1B9A),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Weather: $_weather',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[900],
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Suggested Workout: $_workoutSuggestion',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[800],
+                          height: 1.5,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pushNamed(context, '/log'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6A1B9A),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 56),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 4,
+                          shadowColor: Colors.black.withOpacity(0.3),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: const Text('Log Workout'),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed:
+                            () => Navigator.pushNamed(context, '/history'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF6A1B9A),
+                          minimumSize: const Size(double.infinity, 56),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                          side: const BorderSide(
+                            color: Color(0xFF6A1B9A),
+                            width: 2,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: const Text('View History'),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
     );
@@ -178,18 +312,62 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.fitness_center),
-        title: Text("GymTickler"),
+        leading: const Icon(
+          Icons.fitness_center,
+          size: 28,
+          color: Colors.white,
+        ),
+        title: const Text(
+          'GymTickler',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 1.2,
+          ),
+        ),
         centerTitle: true,
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF6A1B9A), // Deep purple
+                Color(0xFFAB47BC), // Lighter purple
+              ],
+            ),
+          ),
+        ),
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.3),
         actions: [
-          IconButton(icon: Icon(Icons.info_outline), onPressed: _showInfoModal),
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: Colors.white, size: 28),
+            onPressed: _showInfoModal,
+          ),
         ],
       ),
       body:
           _currentPosition == null
-              ? Center(child: CircularProgressIndicator())
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFFAB47BC),
+                      ),
+                      strokeWidth: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Finding your location...',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              )
               : GoogleMap(
                 myLocationEnabled: true,
                 myLocationButtonEnabled: true,
@@ -213,7 +391,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           (gym) => Marker(
                             markerId: MarkerId(gym.name),
                             position: LatLng(gym.lat, gym.lng),
-                            infoWindow: InfoWindow(title: gym.name),
+                            infoWindow: InfoWindow(
+                              title: gym.name,
+                              snippet: 'Tap to visit',
+                            ),
+                            icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueViolet,
+                            ),
                           ),
                         )
                         .toSet(),

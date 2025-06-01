@@ -22,6 +22,7 @@ class GymTicklerApp extends StatelessWidget {
     return MaterialApp(
       title: 'GymTickler',
       theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
       home: SplashScreen(),
       routes: {
         '/log': (context) => LogWorkoutScreen(),
