@@ -175,6 +175,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 onPressed: () {
                                   box.deleteAt(index);
                                   setState(() {});
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Workout deleted'),
+                                      duration: const Duration(seconds: 2),
+                                      backgroundColor: Colors.redAccent,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
                                 },
                               ),
                               onTap: () {

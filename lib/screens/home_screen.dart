@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:gymtickler_mad_etr/model/model.dart';
+import 'package:gymtickler_mad_etr/screens/add_markers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 
@@ -18,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Gym> _gyms = [];
   String _weather = 'Loading...';
   String _workoutSuggestion = '';
+  bool _gymZoneShown = false;
 
   @override
   void initState() {
@@ -48,9 +50,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _currentPosition = await Geolocator.getCurrentPosition();
     setState(() {});
-
     await _fetchGyms();
     await _fetchWeather();
+
+    // Check for gyms nearby after fetching data
+    _checkForNearbyGymZone();
   }
 
   Future<void> _fetchGyms() async {
@@ -58,9 +62,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final box = Hive.box<Gym>('gyms');
     if (box.isNotEmpty) {
-      setState(() {
-        _gyms = box.values.cast<Gym>().toList();
-      });
+      final allGyms = box.values.toList();
+      _gyms =
+          allGyms.where((gym) {
+            final distance = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              gym.lat,
+              gym.lng,
+            );
+            return distance <= 5000; // Filter for 5km radius
+          }).toList();
+
+      setState(() {});
       return;
     }
 
@@ -75,24 +89,37 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = jsonDecode(response.body);
         final results = data['results'] as List;
 
-        _gyms =
+        final fetchedGyms =
             results
                 .where((place) {
                   final name = (place['name'] as String).toLowerCase();
                   return name.contains('gym') || name.contains('fitness');
                 })
-                .map(
-                  (place) => Gym(
+                .map((place) {
+                  return Gym(
                     name: place['name'],
                     lat: place['geometry']['location']['lat'],
                     lng: place['geometry']['location']['lng'],
-                  ),
-                )
+                  );
+                })
                 .toList();
 
         await box.clear();
-        await box.addAll(_gyms);
+        await box.addAll(fetchedGyms);
 
+        // Apply the 5km filter
+        _gyms =
+            fetchedGyms.where((gym) {
+              final distance = Geolocator.distanceBetween(
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+                gym.lat,
+                gym.lng,
+              );
+              return distance <= 5000;
+            }).toList();
+
+        print('Filtered markers count: ${_gyms.length}');
         setState(() {});
       }
     } catch (e) {
@@ -144,6 +171,60 @@ class _HomeScreenState extends State<HomeScreen> {
     mapController = controller;
   }
 
+  void _showGymZoneModal(String gymName, int gymCount) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Gym Alert"),
+          content: Text(
+            "There are $gymCount gym(s) nearby. \nYou are near $gymName. ",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _checkForNearbyGymZone() {
+    if (_currentPosition == null || _gyms.isEmpty || _gymZoneShown) return;
+
+    const double radius = 5000; // 5 km radius
+
+    for (var gym in _gyms) {
+      final distance = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        gym.lat,
+        gym.lng,
+      );
+
+      if (distance <= radius) {
+        _showGymZoneModal(gym.name, _gyms.length);
+        _gymZoneShown = true; // Show only once per session
+        break;
+      }
+    }
+  }
+
+  Set<Marker> _buildGymMarkers() {
+    return _gyms.map((gym) {
+      return Marker(
+        markerId: MarkerId(gym.name),
+        position: LatLng(gym.lat, gym.lng),
+        infoWindow: InfoWindow(title: gym.name),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+      );
+    }).toSet();
+  }
+
   void _showInfoModal() {
     showModalBottomSheet(
       context: context,
@@ -179,8 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(0xFFAB47BC), // Lighter purple
-                      Color(0xFFE1BEE7), // Softer purple
+                      Color(0xFFAB47BC),
+                      Color(0xFFE1BEE7),
                       Colors.white,
                     ],
                   ),
@@ -241,7 +322,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                           color: Colors.grey[900],
-                          letterSpacing: 0.3,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -251,7 +331,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: 16,
                           color: Colors.grey[800],
                           height: 1.5,
-                          letterSpacing: 0.3,
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -266,37 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           elevation: 4,
                           shadowColor: Colors.black.withOpacity(0.3),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
                         ),
                         child: const Text('Log Workout'),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed:
-                            () => Navigator.pushNamed(context, '/history'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF6A1B9A),
-                          minimumSize: const Size(double.infinity, 56),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                          side: const BorderSide(
-                            color: Color(0xFF6A1B9A),
-                            width: 2,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        child: const Text('View History'),
                       ),
                       const SizedBox(height: 24),
                     ],
@@ -308,43 +358,60 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _loadCachedData() async {
+    final gymBox = Hive.box<Gym>('gyms');
+    final weatherBox = Hive.box('weather');
+
+    if (_gyms.isEmpty && gymBox.isNotEmpty) {
+      setState(() {
+        _gyms = gymBox.values.toList();
+      });
+      _checkForNearbyGymZone();
+    }
+
+    if (weatherBox.containsKey('condition')) {
+      setState(() {
+        _weather = weatherBox.get('condition');
+        _workoutSuggestion = _getWorkoutSuggestion(_weather);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const Icon(
-          Icons.fitness_center,
-          size: 28,
-          color: Colors.white,
-        ),
+        leading: const Icon(Icons.fitness_center, color: Colors.white),
         title: const Text(
           'GymTickler',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            letterSpacing: 1.2,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 22),
         ),
         centerTitle: true,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF6A1B9A), // Deep purple
-                Color(0xFFAB47BC), // Lighter purple
-              ],
+              colors: [Color(0xFF6A1B9A), Color(0xFFAB47BC)],
             ),
           ),
         ),
-        elevation: 4,
-        shadowColor: Colors.black.withOpacity(0.3),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white, size: 28),
-            onPressed: _showInfoModal,
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'Reload',
+            onPressed: () async {
+              setState(() {
+                _weather = 'Loading...';
+                _workoutSuggestion = '';
+                _gyms.clear();
+                _gymZoneShown = false;
+              });
+
+              await _getCurrentLocation();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.history_rounded, color: Colors.white),
+            onPressed: () => Navigator.pushNamed(context, '/history'),
           ),
         ],
       ),
@@ -358,12 +425,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       valueColor: AlwaysStoppedAnimation<Color>(
                         Color(0xFFAB47BC),
                       ),
-                      strokeWidth: 3,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'Finding your location...',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -372,8 +438,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 myLocationEnabled: true,
                 myLocationButtonEnabled: true,
                 compassEnabled: true,
-                zoomControlsEnabled: true,
                 mapType: MapType.normal,
+                zoomControlsEnabled: false,
                 onTap: (LatLng latLng) {
                   mapController?.animateCamera(CameraUpdate.newLatLng(latLng));
                 },
@@ -385,39 +451,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   zoom: 16,
                 ),
-                markers:
-                    _gyms
-                        .map(
-                          (gym) => Marker(
-                            markerId: MarkerId(gym.name),
-                            position: LatLng(gym.lat, gym.lng),
-                            infoWindow: InfoWindow(
-                              title: gym.name,
-                              snippet: 'Tap to visit',
-                            ),
-                            icon: BitmapDescriptor.defaultMarkerWithHue(
-                              BitmapDescriptor.hueViolet,
-                            ),
-                          ),
-                        )
-                        .toSet(),
+                markers: _buildGymMarkers(),
               ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showInfoModal,
+        // onPressed: () {
+        //   Navigator.of(
+        //     context,
+        //   ).push(MaterialPageRoute(builder: (context) => AddMarkersScreen()));
+        // },
+        backgroundColor: const Color(0xFF6A1B9A),
+        child: const Icon(Icons.info_outline, color: Colors.white),
+      ),
     );
-  }
-
-  Future<void> _loadCachedData() async {
-    final box = Hive.box<Gym>('gyms');
-    if (box.isNotEmpty) {
-      setState(() {
-        _gyms = box.values.cast<Gym>().toList();
-      });
-    }
-    final weatherBox = Hive.box('weather');
-    if (weatherBox.isNotEmpty) {
-      setState(() {
-        _weather = weatherBox.get('condition', defaultValue: 'Unknown');
-        _workoutSuggestion = _getWorkoutSuggestion(_weather);
-      });
-    }
   }
 }
