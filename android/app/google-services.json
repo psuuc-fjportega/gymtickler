@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "643494198155",
+    "project_id": "fir-try-d4e7a",
+    "storage_bucket": "fir-try-d4e7a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:643494198155:android:ff3f35f9376deec2ff4d8e",
+        "android_client_info": {
+          "package_name": "com.example.gymtickler_mad_etr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKxfJHuuZPulm4RyaMy2ZLrWFxFtnnDoU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
